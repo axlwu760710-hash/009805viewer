@@ -3,11 +3,11 @@ import pandas as pd
 import datetime
 import os
 
-# 1. 定位檔案
+# 1. 定位檔案路徑
 current_dir = os.path.dirname(os.path.abspath(__file__))
 index_path = os.path.join(current_dir, "index.html")
 
-# 2. 50 檔權重數據
+# 2. 50 檔精確權重
 COMPONENTS = {
     "GEV": 0.1265, "VRT": 0.0975, "ETN": 0.0912, "PWR": 0.0635, "HUBB": 0.0610,
     "NEE": 0.0418, "SO": 0.0355, "DUK": 0.0332, "NXT": 0.0275, "D": 0.0235,
@@ -27,14 +27,15 @@ def run():
     data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
     
     if data.empty or len(data) < 2:
-        print("數據同步中或非開盤日...")
+        print("數據不足，跳過更新")
         return
 
     latest, prev = data.iloc[-1], data.iloc[-2]
+    
     rows = ""
     total_impact = 0
     
-    # 4. 計算權重貢獻
+    # 4. 產生表格與計算
     for t, weight in COMPONENTS.items():
         if t in latest and t in prev:
             change = (latest[t] - prev[t]) / prev[t]
@@ -46,22 +47,24 @@ def run():
     usd_change = (latest["TWD=X"] - prev["TWD=X"]) / prev["TWD=X"]
     final_total = total_impact + usd_change
     
-    # 5. 讀取並安全替換
+    # 5. 更新 HTML
     if not os.path.exists(index_path):
-        print("錯誤：找不到 index.html")
+        print(f"錯誤：找不到 {index_path}")
         return
 
     with open(index_path, "r", encoding="utf-8") as f:
         html = f.read()
     
-    # --- 修正 MemoryError 的重點 ---
+    # --- 關鍵修正處：絕對不能使用空字串 "" ---
     html = html.replace("", f"{total_impact:+.2%}")
     html = html.replace("", f"{usd_change:+.2%}")
     html = html.replace("", f"{final_total:+.2%}")
     html = html.replace("", rows)
     html = html.replace("", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html)
-    print("✅ 數據更新完成！")
+    print("✅ 數據更新成功！")
+
 if __name__ == "__main__":
     run()
