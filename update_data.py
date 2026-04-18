@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 import os
 
-# 定位路徑
+# 1. 定位檔案
 current_dir = os.path.dirname(os.path.abspath(__file__))
 index_path = os.path.join(current_dir, "index.html")
 
@@ -21,10 +21,14 @@ COMPONENTS = {
 }
 
 def run():
-    # 抓取數據
+    # 抓取 Yahoo Finance 數據
     tickers = list(COMPONENTS.keys()) + ["TWD=X"]
-    data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
-    
+    try:
+        data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
+    except Exception as e:
+        print(f"抓取失敗: {e}")
+        return
+
     if data.empty or len(data) < 2:
         print("數據同步中或非開盤日...")
         return
@@ -33,46 +37,37 @@ def run():
     rows_list = []
     total_impact = 0
     
-    # 計算
     for t, weight in COMPONENTS.items():
         if t in latest and t in prev:
             change = (latest[t] - prev[t]) / prev[t]
             impact = change * weight
             total_impact += impact
             color = "#22c55e" if change >= 0 else "#ef4444"
-            rows_list.append(f'<tr><td><b>{t}</b></td><td style="color:{color}">{change:+.2%}</td><td>{weight:.2%}</td><td style="color:{color}">{impact:+.4%}</td></tr>')
+            rows_list.append(f'<tr><td><b style="color:#38bdf8;">{t}</b></td><td style="color:{color}">{change:+.2%}</td><td>{weight:.2%}</td><td style="color:{color}">{impact:+.4%}</td></tr>')
     
     usd_change = (latest["TWD=X"] - prev["TWD=X"]) / prev["TWD=X"]
     final_total = total_impact + usd_change
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 讀取 index.html
-    if not os.path.exists(index_path):
-        print("錯誤：找不到 index.html")
-        return
+    # 讀取模板
     with open(index_path, "r", encoding="utf-8") as f:
         html = f.read()
 
-    # --- 關鍵安全機制：使用 mapping 且確保標籤不為空 ---
-    # 這裡的 replace 絕對不能用 ""
-    mapping = {
-        "": f"{total_impact:+.2%}",
-        "": f"{usd_change:+.2%}",
-        "": f"{final_total:+.2%}",
-        "": "".join(rows_list),
-        "": now_str
-    }
+    # --- 核心安全防線：只有找到正確標籤才做 replace ---
+    if "" not in html:
+        print("致命警告：index.html 內容已損壞（找不到標籤），請手動重貼 index.html 模板！")
+        return
 
-    for tag, val in mapping.items():
-        if tag in html:
-            html = html.replace(tag, val)
-        else:
-            print(f"警告：找不到標籤 {tag}，可能已經被置換過或模板損壞")
+    html = html.replace("", f"{total_impact:+.2%}")
+    html = html.replace("", f"{usd_change:+.2%}")
+    html = html.replace("", f"{final_total:+.2%}")
+    html = html.replace("", "".join(rows_list))
+    html = html.replace("", now_str)
 
-    # 寫回
+    # 寫回檔案
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html)
-    print("✅ 數據寫入完成！")
+    print(f"✅ 數據同步成功於 {now_str}")
 
 if __name__ == "__main__":
     run()
