@@ -7,7 +7,7 @@ import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 index_path = os.path.join(current_dir, "index.html")
 
-# 2. 50 檔精確權重
+# 2. 50 檔精確權重清單
 COMPONENTS = {
     "GEV": 0.1265, "VRT": 0.0975, "ETN": 0.0912, "PWR": 0.0635, "HUBB": 0.0610,
     "NEE": 0.0418, "SO": 0.0355, "DUK": 0.0332, "NXT": 0.0275, "D": 0.0235,
@@ -22,9 +22,8 @@ COMPONENTS = {
 }
 
 def run():
-    # 3. 抓取數據
+    # 3. 抓取數據 (美股兩日收盤價)
     tickers = list(COMPONENTS.keys()) + ["TWD=X"]
-    # 獲取美股兩日數據計算漲跌
     data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
     
     if data.empty or len(data) < 2:
@@ -42,7 +41,6 @@ def run():
             impact = change * weight
             total_impact += impact
             color = "#22c55e" if change >= 0 else "#ef4444"
-            # 根據藍色 UI 的表格結構生成 HTML
             rows += f'<tr><td><span class="ticker">{t}</span></td><td style="color:{color}">{change:+.2%}</td><td><span class="weight-tag">{weight:.2%}</span></td><td style="color:{color}; font-weight:bold;">{impact:+.4%}</td></tr>'
     
     # 5. 匯率計算
@@ -51,13 +49,14 @@ def run():
     
     # 6. 讀取並替換 HTML 內容
     if not os.path.exists(index_path):
-        print(f"錯誤：找不到 {index_path}，請確認檔案在同一目錄下")
+        print(f"錯誤：在目錄下找不到 index.html")
         return
 
     with open(index_path, "r", encoding="utf-8") as f:
         html = f.read()
     
-    # --- 關鍵修正處：使用 HTML 註解標籤作為替換點 ---
+    # --- 關鍵修正處：嚴格對準 HTML 裡的註解標籤 ---
+    # 絕對不能使用 empty string ""
     html = html.replace("", f"{total_impact:+.2%}")
     html = html.replace("", f"{usd_change:+.2%}")
     html = html.replace("", f"{final_total:+.2%}")
