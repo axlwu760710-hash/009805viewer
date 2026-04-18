@@ -57,11 +57,11 @@ def run():
         html = f.read()
     
     # 這裡的標籤一定要跟 index.html 裡的註解完全對應
-    html = html.replace("", f"{total_impact:+.2%}")
-    html = html.replace("", f"{usd_change:+.2%}")
-    html = html.replace("", f"{final_total:+.2%}")
-    html = html.replace("", rows)
-    html = html.replace("", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    html = html.replace(``, f"{total_impact:+.2%}")
+    html = html.replace(``, f"{usd_change:+.2%}")
+    html = html.replace(``, f"{final_total:+.2%}")
+    html = html.replace(``, rows)
+    html = html.replace(``, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     
     # 7. 寫回檔案
     with open(index_path, "w", encoding="utf-8") as f:
