@@ -3,11 +3,11 @@ import pandas as pd
 import datetime
 import os
 
-# 1. 定位檔案
+# 1. 定位檔案位置
 current_dir = os.path.dirname(os.path.abspath(__file__))
 index_path = os.path.join(current_dir, "index.html")
 
-# 2. 50 檔權重
+# 2. 50 檔精確權重
 COMPONENTS = {
     "GEV": 0.1265, "VRT": 0.0975, "ETN": 0.0912, "PWR": 0.0635, "HUBB": 0.0610,
     "NEE": 0.0418, "SO": 0.0355, "DUK": 0.0332, "NXT": 0.0275, "D": 0.0235,
@@ -22,7 +22,7 @@ COMPONENTS = {
 }
 
 def run():
-    # 3. 抓取數據
+    # 3. 抓取報價 (美股兩日數據)
     tickers = list(COMPONENTS.keys()) + ["TWD=X"]
     data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
     
@@ -31,40 +31,41 @@ def run():
         return
 
     latest, prev = data.iloc[-1], data.iloc[-2]
-    rows = ""
+    rows_html = ""
     total_impact = 0
     
-    # 4. 計算權重貢獻
+    # 4. 計算各檔貢獻度
     for t, weight in COMPONENTS.items():
         if t in latest and t in prev:
             change = (latest[t] - prev[t]) / prev[t]
             impact = change * weight
             total_impact += impact
             color = "#22c55e" if change >= 0 else "#ef4444"
-            rows += f'<tr><td><span class="ticker">{t}</span></td><td style="color:{color}">{change:+.2%}</td><td><span class="weight-tag">{weight:.2%}</span></td><td style="color:{color}; font-weight:bold;">{impact:+.4%}</td></tr>'
+            rows_html += f'<tr><td><span class="ticker">{t}</span></td><td style="color:{color}">{change:+.2%}</td><td><span class="weight-tag">{weight:.2%}</span></td><td style="color:{color}; font-weight:bold;">{impact:+.4%}</td></tr>'
     
     # 5. 匯率計算
     usd_change = (latest["TWD=X"] - prev["TWD=X"]) / prev["TWD=X"]
     final_total = total_impact + usd_change
     
-    # 6. 安全替換內容
+    # 6. 安全更新 HTML 檔案
     if not os.path.exists(index_path):
-        print("錯誤：找不到 index.html")
+        print(f"找不到檔案：{index_path}")
         return
 
     with open(index_path, "r", encoding="utf-8") as f:
-        html = f.read()
+        html_content = f.read()
     
-    # 這裡全部使用標準半形雙引號
-    html = html.replace("", f"{total_impact:+.2%}")
-    html = html.replace("", f"{usd_change:+.2%}")
-    html = html.replace("", f"{final_total:+.2%}")
-    html = html.replace("", rows)
-    html = html.replace("", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    # --- 關鍵修正：確保第一個參數是標籤文字，絕對不留空 ---
+    # 請檢查你的 index.html 裡是否真的有這些註解
+    html_content = html_content.replace("", f"{total_impact:+.2%}")
+    html_content = html_content.replace("", f"{usd_change:+.2%}")
+    html_content = html_content.replace("", f"{final_total:+.2%}")
+    html_content = html_content.replace("", rows_html)
+    html_content = html_content.replace("", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     
     with open(index_path, "w", encoding="utf-8") as f:
-        f.write(html)
-    print("✅ 數據更新成功！")
+        f.write(html_content)
+    print("✅ 009805 監控站數據更新成功！")
 
 if __name__ == "__main__":
     run()
