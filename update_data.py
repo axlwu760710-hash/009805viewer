@@ -3,11 +3,9 @@ import pandas as pd
 import datetime
 import os
 
-# 1. 定位檔案位置
 current_dir = os.path.dirname(os.path.abspath(__file__))
 index_path = os.path.join(current_dir, "index.html")
 
-# 2. 50 檔精確權重
 COMPONENTS = {
     "GEV": 0.1265, "VRT": 0.0975, "ETN": 0.0912, "PWR": 0.0635, "HUBB": 0.0610,
     "NEE": 0.0418, "SO": 0.0355, "DUK": 0.0332, "NXT": 0.0275, "D": 0.0235,
@@ -22,58 +20,50 @@ COMPONENTS = {
 }
 
 def run():
-    # 3. 抓取報價
+    # 抓取報價
     tickers = list(COMPONENTS.keys()) + ["TWD=X"]
     data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
     
     if data.empty or len(data) < 2:
-        print("數據不足，可能是週末或休市")
+        print("數據同步中或非開盤日...")
         return
 
     latest, prev = data.iloc[-1], data.iloc[-2]
     rows_list = []
     total_impact = 0
     
-    # 4. 計算加權貢獻
     for t, weight in COMPONENTS.items():
         if t in latest and t in prev:
             change = (latest[t] - prev[t]) / prev[t]
             impact = change * weight
             total_impact += impact
             color = "#22c55e" if change >= 0 else "#ef4444"
-            rows_list.append(f'<tr><td><span class="ticker">{t}</span></td><td style="color:{color}">{change:+.2%}</td><td><span class="weight-tag">{weight:.2%}</span></td><td style="color:{color}; font-weight:bold;">{impact:+.4%}</td></tr>')
+            rows_list.append(f'<tr><td><b>{t}</b></td><td style="color:{color}">{change:+.2%}</td><td>{weight:.2%}</td><td style="color:{color}">{impact:+.4%}</td></tr>')
     
     usd_change = (latest["TWD=X"] - prev["TWD=X"]) / prev["TWD=X"]
     final_total = total_impact + usd_change
-    rows_html = "".join(rows_list)
-    update_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # 5. 讀取 HTML
-    if not os.path.exists(index_path):
-        print("錯誤：找不到 index.html")
-        return
+    
+    # 讀取模板
     with open(index_path, "r", encoding="utf-8") as f:
-        full_html = f.read()
+        html = f.read()
 
-    # --- 核心避錯邏輯：檢查關鍵標籤是否存在，存在才執行替換 ---
-    tags = {
-        "": f"{total_impact:+.2%}",
-        "": f"{usd_change:+.2%}",
-        "": f"{final_total:+.2%}",
-        "": rows_html,
-        "": update_time
-    }
+    # 檢查：如果 HTML 已經被填過了（找不到標籤），就強制還原標籤（這是關鍵防止檔案爆炸的邏輯）
+    if "" not in html:
+        # 如果標籤不見了，代表這是上一次跑完的結果，我們需要重置它
+        # 這裡我們簡單點：直接不處理，或者提示手動還原
+        print("警告：找不到標籤，請確認 index.html 是原始模板狀態")
+        return
 
-    for tag, value in tags.items():
-        if tag in full_html: # 只有標籤真的在 HTML 裡面，才執行替換
-            full_html = full_html.replace(tag, value)
-        else:
-            print(f"警告：HTML 中找不到標籤 {tag}")
-
-    # 6. 寫回檔案
+    # 替換標籤
+    html = html.replace("", f"{total_impact:+.2%}")
+    html = html.replace("", f"{usd_change:+.2%}")
+    html = html.replace("", f"{final_total:+.2%}")
+    html = html.replace("", "".join(rows_list))
+    html = html.replace("", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
     with open(index_path, "w", encoding="utf-8") as f:
-        f.write(full_html)
-    print("✅ 009805 監控站數據同步完成！")
+        f.write(html)
+    print("✅ 數據更新成功")
 
 if __name__ == "__main__":
     run()
