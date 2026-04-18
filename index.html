@@ -20,13 +20,13 @@
         
         /* 頂部導航與計數器 */
         .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .visitor-counter { color: var(--blue); font-family: monospace; background: rgba(56, 189, 248, 0.1); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); }
+        .visitor-counter { color: var(--blue); font-family: monospace; background: rgba(56, 189, 248, 0.1); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); font-weight: bold; }
         
         /* Dashboard Header */
         .header { background: linear-gradient(135deg, #1e40af 0%, #0f172a 100%); padding: 30px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .status-light { background: rgba(34, 197, 94, 0.1); color: var(--green); border: 1px solid var(--green); padding: 5px 15px; border-radius: 20px; font-weight: bold; animation: pulse 2s infinite; }
 
-        /* 動態預估數據條 (取代原本靜態的變壓器資訊) */
+        /* 動態預估數據條 */
         .market-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
         .indicator { background: var(--card); padding: 20px; border-radius: 10px; border-left: 5px solid var(--blue); text-align: center; border: 1px solid var(--border); }
         .ind-label { font-size: 14px; color: #94a3b8; display: block; margin-bottom: 8px; }
@@ -40,7 +40,7 @@
         tr:hover { background: #334155; transition: 0.2s; }
         
         .ticker { font-weight: bold; color: var(--blue); }
-        .weight-tag { background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        .weight-tag { background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--green); border: 1px solid rgba(34, 197, 94, 0.3); }
         
         /* Chart & News Section */
         .flex-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
@@ -58,10 +58,3 @@
 <div class="container">
     <div class="top-nav">
         <div style="font-weight: bold; color: var(--blue);">⚡ 009805 專業監測終端 (50檔自動同步)</div>
-        <div class="visitor-counter">📡 累積瀏覽次數: <span id="visits">...</span></div>
-    </div>
-
-    <div class="header">
-        <div>
-            <h1 style="margin:0;">⚡ 009805 電力基建「自動化」監控站</h1>
-            <p style="margin:8px 0 0; color:#94a3b8;">即時追蹤美股 50 檔成分股加權
