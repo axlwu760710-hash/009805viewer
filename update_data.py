@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 import os
 
-# 1. 定位檔案
+# 1. 定位 index.html 的路徑
 current_dir = os.path.dirname(os.path.abspath(__file__))
 index_path = os.path.join(current_dir, "index.html")
 
@@ -21,20 +21,15 @@ COMPONENTS = {
 }
 
 def run():
-    # 抓取 Yahoo Finance 數據
+    # 抓取數據
     tickers = list(COMPONENTS.keys()) + ["TWD=X"]
-    try:
-        data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
-    except Exception as e:
-        print(f"抓取失敗: {e}")
-        return
-
+    data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
+    
     if data.empty or len(data) < 2:
-        print("數據同步中或非開盤日...")
         return
 
     latest, prev = data.iloc[-1], data.iloc[-2]
-    rows_list = []
+    rows_html = ""
     total_impact = 0
     
     for t, weight in COMPONENTS.items():
@@ -43,31 +38,38 @@ def run():
             impact = change * weight
             total_impact += impact
             color = "#22c55e" if change >= 0 else "#ef4444"
-            rows_list.append(f'<tr><td><b style="color:#38bdf8;">{t}</b></td><td style="color:{color}">{change:+.2%}</td><td>{weight:.2%}</td><td style="color:{color}">{impact:+.4%}</td></tr>')
+            rows_html += f'<tr><td><b style="color:#38bdf8;">{t}</b></td><td style="color:{color}">{change:+.2%}</td><td>{weight:.2%}</td><td style="color:{color}">{impact:+.4%}</td></tr>'
     
     usd_change = (latest["TWD=X"] - prev["TWD=X"]) / prev["TWD=X"]
     final_total = total_impact + usd_change
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 讀取模板
-    with open(index_path, "r", encoding="utf-8") as f:
-        html = f.read()
+    # --- 終極修正：直接「生成」整份 HTML，不依賴舊檔案內容，不使用 replace ---
+    html_template = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>009805 戰情室</title></head>
+    <body style="background-color: #0f172a; color: white; font-family: sans-serif; padding: 20px;">
+        <h2>⚡ 009805 成分股即時估算</h2>
+        <p>最後更新：{now_str}</p>
+        <div style="display:flex; gap:20px; font-size:20px; margin-bottom:20px;">
+            <div>美股影響: <b style="color:#38bdf8;">{total_impact:+.2%}</b></div>
+            <div>匯率影響: <b style="color:#38bdf8;">{usd_change:+.2%}</b></div>
+            <div>預估總計: <b style="color:#22c55e;">{final_total:+.2%}</b></div>
+        </div>
+        <table border="1" style="width:100%; border-collapse:collapse; background-color:#1e293b;">
+            <thead><tr style="background:#334155;"><th>代號</th><th>漲跌</th><th>權重</th><th>貢獻</th></tr></thead>
+            <tbody>{rows_html}</tbody>
+        </table>
+    </body>
+    </html>
+    """
 
-    # --- 核心安全防線：只有找到正確標籤才做 replace ---
-    if "" not in html:
-        print("致命警告：index.html 內容已損壞（找不到標籤），請手動重貼 index.html 模板！")
-        return
-
-    html = html.replace("", f"{total_impact:+.2%}")
-    html = html.replace("", f"{usd_change:+.2%}")
-    html = html.replace("", f"{final_total:+.2%}")
-    html = html.replace("", "".join(rows_list))
-    html = html.replace("", now_str)
-
-    # 寫回檔案
+    # 直接強制蓋寫 index.html，不管裡面本來有什麼
     with open(index_path, "w", encoding="utf-8") as f:
-        f.write(html)
-    print(f"✅ 數據同步成功於 {now_str}")
+        f.write(html_template)
+    
+    print(f"✅ 數據已強制重寫：{now_str}")
 
 if __name__ == "__main__":
     run()
