@@ -22,50 +22,58 @@ COMPONENTS = {
 }
 
 def run():
-    # 3. 抓取報價 (美股兩日數據)
+    # 3. 抓取報價
     tickers = list(COMPONENTS.keys()) + ["TWD=X"]
     data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
     
     if data.empty or len(data) < 2:
-        print("數據同步中或非開盤日...")
+        print("數據不足，可能是週末或休市")
         return
 
     latest, prev = data.iloc[-1], data.iloc[-2]
-    rows_html = ""
+    rows_list = []
     total_impact = 0
     
-    # 4. 計算各檔貢獻度
+    # 4. 計算加權貢獻
     for t, weight in COMPONENTS.items():
         if t in latest and t in prev:
             change = (latest[t] - prev[t]) / prev[t]
             impact = change * weight
             total_impact += impact
             color = "#22c55e" if change >= 0 else "#ef4444"
-            rows_html += f'<tr><td><span class="ticker">{t}</span></td><td style="color:{color}">{change:+.2%}</td><td><span class="weight-tag">{weight:.2%}</span></td><td style="color:{color}; font-weight:bold;">{impact:+.4%}</td></tr>'
+            rows_list.append(f'<tr><td><span class="ticker">{t}</span></td><td style="color:{color}">{change:+.2%}</td><td><span class="weight-tag">{weight:.2%}</span></td><td style="color:{color}; font-weight:bold;">{impact:+.4%}</td></tr>')
     
-    # 5. 匯率計算
     usd_change = (latest["TWD=X"] - prev["TWD=X"]) / prev["TWD=X"]
     final_total = total_impact + usd_change
-    
-    # 6. 安全更新 HTML 檔案
-    if not os.path.exists(index_path):
-        print(f"找不到檔案：{index_path}")
-        return
+    rows_html = "".join(rows_list)
+    update_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # 5. 讀取 HTML
+    if not os.path.exists(index_path):
+        print("錯誤：找不到 index.html")
+        return
     with open(index_path, "r", encoding="utf-8") as f:
-        html_content = f.read()
-    
-    # --- 關鍵修正：確保第一個參數是標籤文字，絕對不留空 ---
-    # 請檢查你的 index.html 裡是否真的有這些註解
-    html_content = html_content.replace("", f"{total_impact:+.2%}")
-    html_content = html_content.replace("", f"{usd_change:+.2%}")
-    html_content = html_content.replace("", f"{final_total:+.2%}")
-    html_content = html_content.replace("", rows_html)
-    html_content = html_content.replace("", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    
+        full_html = f.read()
+
+    # --- 核心避錯邏輯：檢查關鍵標籤是否存在，存在才執行替換 ---
+    tags = {
+        "": f"{total_impact:+.2%}",
+        "": f"{usd_change:+.2%}",
+        "": f"{final_total:+.2%}",
+        "": rows_html,
+        "": update_time
+    }
+
+    for tag, value in tags.items():
+        if tag in full_html: # 只有標籤真的在 HTML 裡面，才執行替換
+            full_html = full_html.replace(tag, value)
+        else:
+            print(f"警告：HTML 中找不到標籤 {tag}")
+
+    # 6. 寫回檔案
     with open(index_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-    print("✅ 009805 監控站數據更新成功！")
+        f.write(full_html)
+    print("✅ 009805 監控站數據同步完成！")
 
 if __name__ == "__main__":
     run()
