@@ -24,6 +24,7 @@ COMPONENTS = {
 def run():
     # 3. 抓取數據
     tickers = list(COMPONENTS.keys()) + ["TWD=X"]
+    # 獲取美股兩日數據計算漲跌
     data = yf.download(tickers, period="2d", interval="1d", progress=False)['Close']
     
     if data.empty or len(data) < 2:
@@ -41,7 +42,7 @@ def run():
             impact = change * weight
             total_impact += impact
             color = "#22c55e" if change >= 0 else "#ef4444"
-            # 根據你藍色 UI 的表格結構生成 HTML
+            # 根據藍色 UI 的表格結構生成 HTML
             rows += f'<tr><td><span class="ticker">{t}</span></td><td style="color:{color}">{change:+.2%}</td><td><span class="weight-tag">{weight:.2%}</span></td><td style="color:{color}; font-weight:bold;">{impact:+.4%}</td></tr>'
     
     # 5. 匯率計算
@@ -50,13 +51,13 @@ def run():
     
     # 6. 讀取並替換 HTML 內容
     if not os.path.exists(index_path):
-        print(f"錯誤：找不到 {index_path}")
+        print(f"錯誤：找不到 {index_path}，請確認檔案在同一目錄下")
         return
 
     with open(index_path, "r", encoding="utf-8") as f:
         html = f.read()
     
-    # --- 關鍵修正處：嚴格對準標籤，絕不使用空字串 ---
+    # --- 關鍵修正處：使用 HTML 註解標籤作為替換點 ---
     html = html.replace("", f"{total_impact:+.2%}")
     html = html.replace("", f"{usd_change:+.2%}")
     html = html.replace("", f"{final_total:+.2%}")
